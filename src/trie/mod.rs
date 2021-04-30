@@ -1,16 +1,5 @@
-use std::hash::Hash;
 use std::collections::HashMap;
-
-/// Split after first char, returning the first char, the rest of the str, and wheter it was the
-/// last character.
-// fn car_cdr(s: &str) -> Option<(char, &str, bool)> {
-//     let mut cs = s.chars();
-// 
-//     match cs.next() {
-//         Some(c) => Some((c, &s[c.len_utf8()..], cs.next().is_none())),
-//         None => None,
-//     }
-// }
+use std::hash::Hash;
 
 /// Represents a node in a Trie
 pub struct Trie<T> {
@@ -37,31 +26,33 @@ impl<T: Eq + Hash> Trie<T> {
     ///
     /// ```
     /// use sb_solver::trie::Trie;
-    /// let mut trie = Trie::new();
+    /// let mut trie = Trie::<char>::new();
     ///
-    /// trie.add("Hello");
-    /// assert!(trie.has("Hello"));
+    /// trie.add("Hello".chars());
+    /// assert!(trie.has("Hello".chars()));
     /// ```
-    pub fn add<I>(&mut self, item: I) -> Option<()>
-    where
-        I: IntoIterator<Item = T>,
-    {
-        let iter = item.into_iter();
-        let next = iter.next()?;
+    pub fn add(&mut self, item: impl IntoIterator<Item = T>) {
+        let mut iter = item.into_iter();
+
+        let next = match iter.next() {
+            Some(v) => v,
+            None => {
+                self.marks_word = true;
+                return;
+            }
+        };
 
         let node = self.nodes.entry(next).or_insert_with(|| Trie::new());
 
-        node.marks_word = node.add(iter).is_some();
-
-        Some(())
+        node.add(iter);
     }
 
     /// Remove an item from the Trie.
-    /// Return whether the Trie is empty.
+    /// Return whether the Trie still stores information.
     ///
     /// # Arguments
     ///
-    /// * `item` - The item to remove.
+    /// * `item` - The iterator to remove.
     ///
     /// # Examples
     ///
@@ -69,63 +60,75 @@ impl<T: Eq + Hash> Trie<T> {
     /// use sb_solver::trie::Trie;
     /// let mut trie = Trie::new();
     ///
-    /// trie.add("Hello");
-    /// assert!(trie.has("Hello"));
+    /// trie.add("Hello".chars());
+    /// assert!(trie.has("Hello".chars()));
     ///
-    /// trie.remove("Hello");
-    /// assert!(!trie.has("Hello"));
+    /// assert!(!trie.remove("Hello".chars()));
+    /// assert!(!trie.has("Hello".chars()));
     /// ```
-    pub fn remove<I>(&mut self, item: I) -> Option<bool>
-    where
-        I: IntoIterator<Item = T>,
-    {
-        let iter = item.into_iter();
-        let next = iter.next()?;
+    pub fn remove(&mut self, item: impl IntoIterator<Item = T>) -> bool {
+        let mut iter = item.into_iter();
 
+        match iter.next() {
+            Some(next) => {
+                if let Some(n) = self.nodes.get_mut(&next) {
+                    if !n.remove(iter) {
+                        self.nodes.remove(&next);
+                    }
+                }
+            }
+            None => self.marks_word = false,
+        }
 
-        // match self.nodes.get_mut(&c) {
-        //     Some(n) => {
-        //         if l {
-        //             n.marks_word = false;
-        //             if n.nodes.len() == 0 {
-        //                 self.nodes.remove(&c);
-        //             }
-        //         } else {
-        //             if n.remove(s) {
-        //                 self.nodes.remove(&c);
-        //             }
-        //         }
-        //     }
-        //     None => return false,
-        // };
-
-        Some(self.nodes.len() == 0 && !self.marks_word)
+        self.marks_word || !self.nodes.is_empty()
     }
 
-    pub fn has(&self, item: &str) -> bool {
-        let (c, s, l) = match car_cdr(item) {
+    /// Checks whether an item is contained in the Trie.
+    ///
+    /// # Arguments
+    ///
+    /// * `item` - An iterator to check.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sb_solver::trie::Trie;
+    /// let mut trie = Trie::<char>::new();
+    ///
+    /// assert!(!trie.has("Hello".chars()));
+    /// trie.add("Hello".chars());
+    /// assert!(trie.has("Hello".chars()));
+    /// ```
+    pub fn has(&self, item: impl IntoIterator<Item = T>) -> bool {
+        let mut iter = item.into_iter();
+
+        let next = match iter.next() {
+            Some(v) => v,
+            None => return self.marks_word,
+        };
+
+        let node = match self.nodes.get(&next) {
             Some(v) => v,
             None => return false,
         };
 
-        match self.nodes.get(&c) {
-            Some(n) => l && n.marks_word || n.has(s),
-            None => false,
+        node.has(iter)
+    }
+}
+
+impl<T: std::fmt::Display> Trie<T> {
+    pub fn _debug(&self, indent: &usize) {
+        for (c, n) in self.nodes.iter() {
+            println!(
+                "{:indent$}{}{}",
+                "",
+                c,
+                if n.marks_word { "*" } else { "" },
+                indent = indent
+            );
+            n._debug(&(indent + 2));
         }
     }
-
-    // pub fn _debug(&self, indent: &usize) {
-    //     for (c, n) in self.nodes.iter() {
-    //         println!(
-    //             "{:indent$}{}{}",
-    //             "",
-    //             c,
-    //             if n.marks_word { "*" } else { "" },
-    //             indent = indent
-    //         );
-    //         n._debug(&(indent + 2));
-    //     }
-    // }
 }
 
 #[cfg(test)]

@@ -29,7 +29,7 @@ fn main() -> io::Result<()> {
     let mut trie = Trie::new();
 
     for line in reader.lines() {
-        trie.add(line?.as_str());
+        trie.add(line?.as_str().chars());
     }
 
     trie._debug(&0);

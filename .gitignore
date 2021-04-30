@@ -1,5 +1,5 @@
 /target
 Session.vim
 words.txt
-Cargo.toml
-.undudir/
+Cargo.lock
+.undodir/

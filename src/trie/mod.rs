@@ -34,6 +34,7 @@ impl<'a> Iterator for TrieIterator<'a> {
                 self.stack.push(cur.nodes.iter());
             } 
 
+            #[allow(unused_mut)] // It's not actually unused. It's used by top.next().
             if let Some(mut top) = self.stack.last_mut() {
                 if let Some((c, t)) = top.next() {
                     self.string.push(*c);
@@ -96,7 +97,6 @@ impl Trie {
     }
 
     /// Remove an item from the Trie.
-    /// Return whether the Trie still stores information.
     ///
     /// # Arguments
     ///
@@ -111,11 +111,11 @@ impl Trie {
     /// trie.add("Hello");
     /// assert!(trie.has("Hello"));
     ///
-    /// assert!(!trie.remove("Hello"));
+    /// trie.remove("Hello");
     /// assert!(!trie.has("Hello"));
     /// ```
-    pub fn remove(&mut self, item: &str) -> bool {
-        self._remove(item.chars())
+    pub fn remove(&mut self, item: &str) {
+        self._remove(item.chars());
     }
 
     fn _remove<'a>(&mut self, mut iter: ::std::str::Chars<'a>) -> bool {

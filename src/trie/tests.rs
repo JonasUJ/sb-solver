@@ -16,8 +16,8 @@ fn test_remove() {
     trie.add("test");
     assert!(trie.has("te"));
     assert!(trie.has("test"));
-    assert!(trie.remove("t"));
-    assert!(trie.remove("test"));
+    trie.remove("t");
+    trie.remove("test");
     assert!(trie.has("te"));
     assert!(!trie.has("test"));
 }

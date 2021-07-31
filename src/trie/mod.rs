@@ -1,13 +1,59 @@
-use std::collections::HashMap;
-use std::hash::Hash;
+use std::collections::hash_map::{HashMap, Iter};
 
 /// Represents a node in a Trie
-pub struct Trie<T> {
-    nodes: HashMap<T, Trie<T>>,
+pub struct Trie {
+    nodes: HashMap<char, Trie>,
     marks_word: bool,
 }
 
-impl<T: Eq + Hash> Trie<T> {
+pub struct TrieIterator<'a> {
+    stack: Vec<Iter<'a, char, Trie>>,
+    string: String,
+    cur: Option<&'a Trie>,
+}
+
+impl<'a> IntoIterator for &'a Trie {
+    type Item = String;
+    type IntoIter = TrieIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        TrieIterator {
+            stack: vec![self.nodes.iter()],
+            string: String::new(),
+            cur: None,
+        }
+    }
+}
+
+impl<'a> Iterator for TrieIterator<'a> {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(cur) = self.cur {
+                self.stack.push(cur.nodes.iter());
+            } 
+
+            if let Some(mut top) = self.stack.last_mut() {
+                if let Some((c, t)) = top.next() {
+                    self.string.push(*c);
+                    self.cur = Some(t);
+                    if t.marks_word {
+                        return Some(self.string.clone());
+                    }
+                } else {
+                    self.cur = None;
+                    self.stack.pop();
+                    self.string.pop();
+                }
+            } else {
+                return None;
+            }
+        };
+    }
+}
+
+impl Trie {
     /// Create a new empty Trie
     pub fn new() -> Self {
         Trie {
@@ -26,14 +72,16 @@ impl<T: Eq + Hash> Trie<T> {
     ///
     /// ```
     /// use sb_solver::trie::Trie;
-    /// let mut trie = Trie::<char>::new();
+    /// let mut trie = Trie::new();
     ///
-    /// trie.add("Hello".chars());
-    /// assert!(trie.has("Hello".chars()));
+    /// trie.add("Hello");
+    /// assert!(trie.has("Hello"));
     /// ```
-    pub fn add(&mut self, item: impl IntoIterator<Item = T>) {
-        let mut iter = item.into_iter();
+    pub fn add(&mut self, item: &str) {
+        self._add(item.chars());
+    }
 
+    fn _add<'a>(&mut self, mut iter: ::std::str::Chars<'a>) {
         let next = match iter.next() {
             Some(v) => v,
             None => {
@@ -42,9 +90,9 @@ impl<T: Eq + Hash> Trie<T> {
             }
         };
 
-        let node = self.nodes.entry(next).or_insert_with(|| Trie::new());
+        let node = self.nodes.entry(next).or_insert_with(Trie::new);
 
-        node.add(iter);
+        node._add(iter);
     }
 
     /// Remove an item from the Trie.
@@ -60,19 +108,21 @@ impl<T: Eq + Hash> Trie<T> {
     /// use sb_solver::trie::Trie;
     /// let mut trie = Trie::new();
     ///
-    /// trie.add("Hello".chars());
-    /// assert!(trie.has("Hello".chars()));
+    /// trie.add("Hello");
+    /// assert!(trie.has("Hello"));
     ///
-    /// assert!(!trie.remove("Hello".chars()));
-    /// assert!(!trie.has("Hello".chars()));
+    /// assert!(!trie.remove("Hello"));
+    /// assert!(!trie.has("Hello"));
     /// ```
-    pub fn remove(&mut self, item: impl IntoIterator<Item = T>) -> bool {
-        let mut iter = item.into_iter();
+    pub fn remove(&mut self, item: &str) -> bool {
+        self._remove(item.chars())
+    }
 
+    fn _remove<'a>(&mut self, mut iter: ::std::str::Chars<'a>) -> bool {
         match iter.next() {
             Some(next) => {
                 if let Some(n) = self.nodes.get_mut(&next) {
-                    if !n.remove(iter) {
+                    if !n._remove(iter) {
                         self.nodes.remove(&next);
                     }
                 }
@@ -93,15 +143,17 @@ impl<T: Eq + Hash> Trie<T> {
     ///
     /// ```
     /// use sb_solver::trie::Trie;
-    /// let mut trie = Trie::<char>::new();
+    /// let mut trie = Trie::new();
     ///
-    /// assert!(!trie.has("Hello".chars()));
-    /// trie.add("Hello".chars());
-    /// assert!(trie.has("Hello".chars()));
+    /// assert!(!trie.has("Hello"));
+    /// trie.add("Hello");
+    /// assert!(trie.has("Hello"));
     /// ```
-    pub fn has(&self, item: impl IntoIterator<Item = T>) -> bool {
-        let mut iter = item.into_iter();
+    pub fn has(&self, item: &str) -> bool {
+        self._has(item.chars())
+    }
 
+    fn _has<'a>(&self, mut iter: ::std::str::Chars<'a>) -> bool {
         let next = match iter.next() {
             Some(v) => v,
             None => return self.marks_word,
@@ -112,11 +164,9 @@ impl<T: Eq + Hash> Trie<T> {
             None => return false,
         };
 
-        node.has(iter)
+        node._has(iter)
     }
-}
 
-impl<T: std::fmt::Display> Trie<T> {
     pub fn _debug(&self, indent: &usize) {
         for (c, n) in self.nodes.iter() {
             println!(

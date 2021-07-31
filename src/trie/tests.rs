@@ -48,9 +48,20 @@ fn test_unicode() {
 #[test]
 fn test_iter() {
     let mut trie = Trie::new();
-    let set: HashSet<String> = ["te", "test", "testing", "other", "none"].iter().map(|s| String::from(*s)).collect();
+    let set: HashSet<String> = ["te", "test", "testing", "other", "none"].iter().map(|s| s.to_string()).collect();
     let mut empty = HashSet::<String>::new();
     set.iter().for_each(|x| trie.add(x));
     empty.extend(&trie);
     assert!(set == empty);
+}
+
+#[test]
+fn test_with_prefix() {
+    let mut trie = Trie::new();
+    let set: HashSet<String> = ["te", "test", "testing", "other", "none"].iter().map(|s| s.to_string()).collect();
+    let subset: HashSet<String> = ["test", "testing"].iter().map(|s| s.to_string()).collect();
+    let mut empty = HashSet::<String>::new();
+    set.iter().for_each(|x| trie.add(x));
+    empty.extend(trie.with_prefix("test"));
+    assert!(subset == empty);
 }

@@ -1,4 +1,5 @@
 use std::collections::hash_map::{HashMap, Iter};
+use std::str::Chars;
 
 /// Represents a node in a Trie
 pub struct Trie {
@@ -31,17 +32,18 @@ impl<'a> Iterator for TrieIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             if let Some(cur) = self.cur {
+                self.cur = None;
                 self.stack.push(cur.nodes.iter());
-            } 
+                if cur.marks_word {
+                    return Some(self.string.clone());
+                }
+            }
 
             #[allow(unused_mut)] // It's not actually unused. It's used by top.next().
             if let Some(mut top) = self.stack.last_mut() {
                 if let Some((c, t)) = top.next() {
                     self.string.push(*c);
                     self.cur = Some(t);
-                    if t.marks_word {
-                        return Some(self.string.clone());
-                    }
                 } else {
                     self.cur = None;
                     self.stack.pop();
@@ -82,7 +84,7 @@ impl Trie {
         self._add(item.chars());
     }
 
-    fn _add<'a>(&mut self, mut iter: ::std::str::Chars<'a>) {
+    fn _add<'a>(&mut self, mut iter: Chars<'a>) {
         let next = match iter.next() {
             Some(v) => v,
             None => {
@@ -118,7 +120,7 @@ impl Trie {
         self._remove(item.chars());
     }
 
-    fn _remove<'a>(&mut self, mut iter: ::std::str::Chars<'a>) -> bool {
+    fn _remove<'a>(&mut self, mut iter: Chars<'a>) -> bool {
         match iter.next() {
             Some(next) => {
                 if let Some(n) = self.nodes.get_mut(&next) {
@@ -153,7 +155,7 @@ impl Trie {
         self._has(item.chars())
     }
 
-    fn _has<'a>(&self, mut iter: ::std::str::Chars<'a>) -> bool {
+    fn _has<'a>(&self, mut iter: Chars<'a>) -> bool {
         let next = match iter.next() {
             Some(v) => v,
             None => return self.marks_word,
@@ -165,6 +167,36 @@ impl Trie {
         };
 
         node._has(iter)
+    }
+
+    pub fn with_prefix<'a>(&'a self, item: &'a str) -> TrieIterator<'a> {
+        match self._get(item.chars()) {
+            Some(trie) => TrieIterator {
+                stack: vec![],
+                string: item.to_string(),
+                cur: Some(trie),
+            },
+            None => TrieIterator {
+                stack: vec![],
+                string: String::new(),
+                cur: None,
+            }
+        }
+    }
+
+    fn _get<'a>(&'a self, mut iter: Chars<'a>) -> Option<&'a Trie> {
+        let next = match iter.next() {
+            Some(v) => v,
+            None => return Some(self),
+        };
+
+        let node = match self.nodes.get(&next) {
+            Some(v) => v,
+            None => return None,
+        };
+
+        node._get(iter)
+
     }
 
     pub fn _debug(&self, indent: &usize) {

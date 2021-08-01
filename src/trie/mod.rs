@@ -102,7 +102,7 @@ impl Trie {
     ///
     /// # Arguments
     ///
-    /// * `item` - The iterator to remove.
+    /// * `item` - The item to remove.
     ///
     /// # Examples
     ///
@@ -139,7 +139,7 @@ impl Trie {
     ///
     /// # Arguments
     ///
-    /// * `item` - An iterator to check.
+    /// * `item` - An item to check.
     ///
     /// # Examples
     ///
@@ -169,11 +169,35 @@ impl Trie {
         node._has(iter)
     }
 
-    pub fn with_prefix<'a>(&'a self, item: &'a str) -> TrieIterator<'a> {
-        match self._get(item.chars()) {
+    /// Returns an iterator over all items in the Trie with the specified prefix.
+    ///
+    /// # Arguments
+    ///
+    /// * `prefix` - The prefix to filter by.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    /// use sb_solver::trie::Trie;
+    /// let mut trie = Trie::new();
+    /// 
+    /// let prefixed: HashSet<String> = ["test", "testing"].iter().map(|s| s.to_string()).collect();
+    /// let mut empty = HashSet::<String>::new();
+    ///
+    /// prefixed.iter().for_each(|s| trie.add(s));
+    /// trie.add("something");
+    /// trie.add("else");
+    /// 
+    /// empty.extend(trie.with_prefix("test"));
+    ///
+    /// assert!(prefixed == empty);
+    /// ```
+    pub fn with_prefix<'a>(&'a self, prefix: &'a str) -> TrieIterator<'a> {
+        match self._get(prefix.chars()) {
             Some(trie) => TrieIterator {
                 stack: vec![],
-                string: item.to_string(),
+                string: prefix.to_string(),
                 cur: Some(trie),
             },
             None => TrieIterator {

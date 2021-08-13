@@ -1,4 +1,5 @@
 use std::collections::hash_map::{HashMap, Iter};
+use std::collections::HashSet;
 use std::str::Chars;
 
 /// Represents a node in a Trie
@@ -11,6 +12,15 @@ pub struct TrieIterator<'a> {
     stack: Vec<Iter<'a, char, Trie>>,
     string: String,
     cur: Option<&'a Trie>,
+}
+
+pub struct SolutionsTrieIterator<'a> {
+    stack: Vec<Iter<'a, char, Trie>>,
+    string: String,
+    cur: Option<&'a Trie>,
+    optional: HashSet<char>,
+    mandatory: &'a char,
+    valid: u32,
 }
 
 impl<'a> IntoIterator for &'a Trie {
@@ -52,7 +62,47 @@ impl<'a> Iterator for TrieIterator<'a> {
             } else {
                 return None;
             }
-        };
+        }
+    }
+}
+
+impl<'a> Iterator for SolutionsTrieIterator<'a> {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(cur) = self.cur {
+                self.cur = None;
+                self.stack.push(cur.nodes.iter());
+                if cur.marks_word && self.valid > 0 {
+                    return Some(self.string.clone());
+                }
+            }
+
+            #[allow(unused_mut)] // It's not actually unused. It's used by top.next().
+            if let Some(mut top) = self.stack.last_mut() {
+                if let Some((c, t)) = top.next() {
+                    let mandatory = self.mandatory == c;
+                    if mandatory || self.optional.contains(c) {
+                        self.string.push(*c);
+                        self.cur = Some(t);
+                        if mandatory {
+                            self.valid += 1;
+                        }
+                    }
+                } else {
+                    self.cur = None;
+                    self.stack.pop();
+                    if let Some(c) = self.string.pop() {
+                        if self.mandatory == &c {
+                            self.valid -= 1;
+                        }
+                    }
+                }
+            } else {
+                return None;
+            }
+        }
     }
 }
 
@@ -181,14 +231,14 @@ impl Trie {
     /// use std::collections::HashSet;
     /// use sb_solver::trie::Trie;
     /// let mut trie = Trie::new();
-    /// 
+    ///
     /// let prefixed: HashSet<String> = ["test", "testing"].iter().map(|s| s.to_string()).collect();
     /// let mut empty = HashSet::<String>::new();
     ///
     /// prefixed.iter().for_each(|s| trie.add(s));
     /// trie.add("something");
     /// trie.add("else");
-    /// 
+    ///
     /// empty.extend(trie.with_prefix("test"));
     ///
     /// assert!(prefixed == empty);
@@ -204,7 +254,7 @@ impl Trie {
                 stack: vec![],
                 string: String::new(),
                 cur: None,
-            }
+            },
         }
     }
 
@@ -220,7 +270,21 @@ impl Trie {
         };
 
         node._get(iter)
+    }
 
+    pub fn find_solutions<'a>(
+        &'a self,
+        mandatory: &'a char,
+        optional: HashSet<char>,
+    ) -> SolutionsTrieIterator<'a> {
+        SolutionsTrieIterator {
+            stack: vec![self.nodes.iter()],
+            string: String::new(),
+            cur: None,
+            optional,
+            mandatory,
+            valid: 0,
+        }
     }
 
     pub fn _debug(&self, indent: &usize) {
